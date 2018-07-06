@@ -7,6 +7,8 @@ namespace LUA_Linter
     {
         public static ObservableCollection<luaFileContents> luaFileInfo { get; set; } = new ObservableCollection<luaFileContents>();
 
+        public static ObservableCollection<luaFileErrors> errorList { get; set; } = new ObservableCollection<luaFileErrors>();
+
         public event PropertyChangedEventHandler PropertyChanged;
     }
 }

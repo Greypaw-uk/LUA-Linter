@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 
 namespace LUA_Linter
 {
@@ -11,8 +13,6 @@ namespace LUA_Linter
     public partial class MainWindow : Window
     {
         MainWindowDataContext context = new MainWindowDataContext();
-
-        List<string> errorList = new List<string>();
 
         private int lineNumber;
         public FileInfo LuaFile;
@@ -38,34 +38,6 @@ namespace LUA_Linter
 
             Nullable<bool> result = openFile.ShowDialog();
 
-            //if valid file is selected, open file, repeatedly add line to datacontext  until the end
-            if (result == true)
-            {
-                StreamReader fileContents = new StreamReader(openFile.FileName);
-                
-                while ((line = fileContents.ReadLine()) != null)
-                {
-                    CheckForErrors(); // check if line exists in error dictionary
-
-                    lineNumber++; // used for displaying line number for easy user reference
-
-                    MainWindowDataContext.luaFileInfo.Add(new luaFileContents
-                    {
-                        fileName = openFile.FileName,
-                        body = lineNumber + "   " + line,
-                        contentError = error
-                    });
-                }
-            }
-            else
-            {
-                MessageBox.Show("Please select a file");
-            }
-        }
-
-
-        private void CheckForErrors()
-        {
             Dictionary<string, string> commonMistakes = new Dictionary<string, string>
             {
                 {"say(", "SAY(" },
@@ -73,19 +45,41 @@ namespace LUA_Linter
                 {"Answer(", "ANSWER(" },
                 {"answer(", "ANSWER(" }
             };
-            
-            // Check contents of luaFileInfo against the above dictionary.
-            foreach (var item in MainWindowDataContext.luaFileInfo)
+
+            //if valid file is selected, open file, repeatedly add line to datacontext  until the end
+            if (result == true)
             {
-                foreach (var dk in commonMistakes)
+                StreamReader fileContents = new StreamReader(openFile.FileName);
+                
+                while ((line = fileContents.ReadLine()) != null)
                 {
-                    // If in the dictionary and !listed, add to list and add to data context error list
-                    if (item.body.Contains(dk.Key) && !errorList.Contains(item.body))
+                    lineNumber++; // adds line numbers to listbox items
+
+                    // if in error dictionary, add to error list
+                    foreach (var keyValuePair in commonMistakes)
                     {
-                        errorList.Add(item.body);
-                        error = item.body;
+                        if (line.Contains(keyValuePair.Key))
+                        {
+                            var dicKey = keyValuePair.Key;
+                            var dicValue = keyValuePair.Value;
+                            MainWindowDataContext.errorList.Add(new luaFileErrors
+                            {
+                                contentError = lineNumber + " " + line  + "\r" + "Should '"  + dicKey + "' be '" + dicValue + "'?" + "\r"
+                            });
+                        }
                     }
+                    
+                    // display contents of Lua file in listbox
+                    MainWindowDataContext.luaFileInfo.Add(new luaFileContents
+                    {
+                        fileName = openFile.FileName,
+                        body = lineNumber + "   " + line
+                    });
                 }
+            }
+            else
+            {
+                MessageBox.Show("Please select a file");
             }
         }
 
