@@ -44,6 +44,7 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
+                        <Button Content="Scan" Height="30" Width="52" Click="scanFile"/>
                     </StackPanel>
                 </Grid>
 
@@ -61,7 +62,7 @@
                     <ListBox Name="lb_errorDisplay"  ItemsSource="{Binding errorList}" IsSynchronizedWithCurrentItem="True" Padding="0" >
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBox Text="{Binding contentError}" Padding="0" BorderThickness="0"/>
+                                <TextBox Text="{Binding contentError}" Padding="0" BorderThickness="0" IsReadOnly="True"/>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
