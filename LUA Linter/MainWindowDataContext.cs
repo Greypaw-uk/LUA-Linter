@@ -5,9 +5,9 @@ namespace LUA_Linter
 {
     public class MainWindowDataContext
     {
-        public static ObservableCollection<luaFileContents> luaFileInfo { get; set; } = new ObservableCollection<luaFileContents>();
+        public static ObservableCollection<luaFileContents> LuaFileInfo { get; set; } = new ObservableCollection<luaFileContents>();
 
-        public static ObservableCollection<luaFileErrors> errorList { get; set; } = new ObservableCollection<luaFileErrors>();
+        public static ObservableCollection<LuaFileErrors> ErrorList { get; set; } = new ObservableCollection<LuaFileErrors>();
 
         public event PropertyChangedEventHandler PropertyChanged;
     }

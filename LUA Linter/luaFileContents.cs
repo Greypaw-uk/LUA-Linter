@@ -39,7 +39,7 @@ namespace LUA_Linter
             }
         }
 
-        public ListCollectionView selectedListEntry { get; set; }
+        public ListCollectionView SelectedListEntry { get; set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
     }
