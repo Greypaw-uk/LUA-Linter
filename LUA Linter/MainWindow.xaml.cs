@@ -99,16 +99,18 @@ namespace LUA_Linter
                 }
             }
 
-// ----- CHECK NODE ORDER -----
+// ----- CHECK NODE ORDER & CONVERSATION TERMINATION -----
 
-            int nodeCounter = 0;
-            int nodeNumber =0;
+            int nodeCounter = 0;    // incrementing counter to compare to NODE() number
+            int nodeNumber =0;      // number extracted from NODE()
 
             foreach (var line in MainWindowDataContext.LuaFileInfo)
                 {
+// ----- NODE CHECK -----
+
                 // Check if line has the phrase NODE(x) in it - where x is a number
-                Regex regex = new Regex(@"\s*NODE\((\d+)\)");
-                Match match = regex.Match(line.body);
+                Regex regexNode = new Regex(@"\s*NODE\((\d+)\)");
+                Match match = regexNode.Match(line.body);
 
                 if(match.Success)
                 {
@@ -123,13 +125,10 @@ namespace LUA_Linter
                     {
                         nodesMatch = true;
                     }
-
 //TODO Add function to check for ENDDIALOG(), KILL(), ATTACK() and round up node numbers to nearest 10.
 
                     if (!nodesMatch)
                     {
-                        //Console.WriteLine("i and j do not match");
-
                         MainWindowDataContext.ErrorList.Add(new LuaFileErrors
                         {
                             ContentError = "Potential NODE numbering error at line " + line.body
@@ -138,6 +137,18 @@ namespace LUA_Linter
 
                     nodeCounter++;
                 }
+
+// ----- SAY CHECK -----
+
+                // Check if line has the phrase SAY in it
+                Regex regexSay = new Regex(@"\s*(SAY)+");
+                Match matchSay = regexSay.Match(line.body);
+
+                    if (matchSay.Success)
+                    {
+                        var sayLine = Regex.Replace(matchSay.ToString(), @"\s*", "");
+                        MessageBox.Show(sayLine + " detected in NODE("+ nodeCounter +")");
+                    }
             }
 
 // ----- DISPLAY ALL CLEAR MESSAGE IF NO ERRORS IDENTIFIED -----
