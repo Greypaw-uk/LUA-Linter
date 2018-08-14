@@ -70,7 +70,12 @@ namespace LUA_Linter
 
         private void CheckForErrors()
         {
-// ----- CHECK DICTIONARY FOR SPELLING MISTAKES -----
+            var lineNumber = 0;
+
+            // ----- CHECK DICTIONARY FOR SPELLING MISTAKES -----
+
+            // TODO Check missionflags
+            // TODO Check that ANSWER nodes point to next NODE() number
 
             Dictionary<string, string> commonMistakes = new Dictionary<string, string>
             {
@@ -90,6 +95,7 @@ namespace LUA_Linter
 
             foreach (var line in MainWindowDataContext.LuaFileInfo)
             {
+                lineNumber++;
                 var value = line.body;
 
                 // if in error dictionary, add to error list
@@ -102,7 +108,8 @@ namespace LUA_Linter
 
                         MainWindowDataContext.ErrorList.Add(new LuaFileErrors
                         {
-                            ContentError = value + "\r" + "Should '" + dicKey + "' be '" + dicValue + "'?" + "\r"
+                            ErrorLine = lineNumber,
+                            ContentError = "Should '" + dicKey + "' be '" + dicValue + "'?" + "\r"
                         });
                     }
                 }
@@ -114,7 +121,7 @@ namespace LUA_Linter
             var nodeNumber = 0;      // number extracted from NODE()
             var DialogEnded = false;
             var NodeDetected = false;
-            var _lineNumber = 0;
+            lineNumber = 0;
 
             var SayTriggered = false;
             var SayDetectLine = 0;
@@ -122,7 +129,7 @@ namespace LUA_Linter
 
             foreach (var line in MainWindowDataContext.LuaFileInfo)
             {
-                _lineNumber++;
+                lineNumber++;
 
                 // Check if line is ENDDIALOG - set nodeNumber to equal nodeCounter
                 var regexEndDialog = new Regex(@"\s*ENDDIALOG");
@@ -165,7 +172,7 @@ namespace LUA_Linter
                         {
                             MainWindowDataContext.ErrorList.Add(new LuaFileErrors
                             {
-                                ErrorLine = _lineNumber,
+                                ErrorLine = lineNumber,
                                 ContentError = "NODE(" + nodeNumber + ")" + " should be NODE(" + nodeCounter + ")"
                             });
                         }
@@ -293,7 +300,7 @@ namespace LUA_Linter
             }
         }
 
-        // TODO Implement a system so you can click an error and it will display the offending line in the Display dataview
+        // Scrolls to the line in Display when double clicking an error.
         private void Errorbox_click(object sender, MouseEventArgs e)
         {
             var control = (TextBox)sender;
