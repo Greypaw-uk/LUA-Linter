@@ -29,7 +29,7 @@ namespace LUA_Linter
         }
 
         private string _lineNumber;
-        public string lineNumber
+        public string LineNumber
         {
             get { return _lineNumber; }
             set

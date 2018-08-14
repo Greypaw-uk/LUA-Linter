@@ -16,6 +16,18 @@ namespace LUA_Linter
             }
         }
 
+        private int _errorLine;
+
+        public int ErrorLine
+        {
+            get { return _errorLine; }
+            set
+            {
+                _errorLine = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("ErrorLine"));
+            }
+        }
+
         public ListCollectionView SelectedListEntry { get; set; }
 
         public event PropertyChangedEventHandler PropertyChanged;

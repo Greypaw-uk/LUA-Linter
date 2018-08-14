@@ -5,6 +5,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace LUA_Linter
 {
@@ -16,6 +18,10 @@ namespace LUA_Linter
         public FileInfo LuaFile;
         private string _line;
 
+        OpenFileDialog openFile = new OpenFileDialog
+        {
+            Filter = "Lua files (*.lua)|*.lua"
+        };
 
         public MainWindow()
         {
@@ -27,11 +33,6 @@ namespace LUA_Linter
 
         private void LoadFile(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog openFile = new OpenFileDialog
-            {
-                Filter = "Lua files (*.lua)|*.lua"
-            };
-
             Nullable<bool> result = openFile.ShowDialog();
 
             //if valid file is selected, open file, repeatedly add lines to observable collection  until the end of Lua file
@@ -40,6 +41,8 @@ namespace LUA_Linter
                 ClearDisplayList();
                 ClearErrorList();
                 lineNumber = 0;
+
+                tb_path.Text = openFile.FileName;
 
                 StreamReader fileContents = new StreamReader(openFile.FileName);
                 
@@ -50,10 +53,12 @@ namespace LUA_Linter
                     // display contents of Lua file in listbox along with the line number
                     MainWindowDataContext.LuaFileInfo.Add(new luaFileContents
                     {
-                        body = lineNumber + "   " + _line
+                        LineNumber = lineNumber.ToString(),
+                        body = _line
                     });
                 }
 
+                fileContents.Close();
                 CheckForErrors();
             }
             else
@@ -76,7 +81,11 @@ namespace LUA_Linter
                 {"node(", "NODE(" },
                 {"Node(", "NODE(" },
                 {"Answer(", "ANSWER(" },
-                {"answer(", "ANSWER(" }
+                {"answer(", "ANSWER(" },
+                {"ENDDIALOGUE(", "ENDDIALOG(" },
+                {"Enddialog(", "ENDDIALOG(" },
+                {"Kill(", "KILL(" },
+                {"Attack(", "ATTACK(" }
             };
 
             foreach (var line in MainWindowDataContext.LuaFileInfo)
@@ -101,54 +110,116 @@ namespace LUA_Linter
 
 // ----- CHECK NODE ORDER & CONVERSATION TERMINATION -----
 
-            int nodeCounter = 0;    // incrementing counter to compare to NODE() number
-            int nodeNumber =0;      // number extracted from NODE()
+            var nodeCounter = 1;    // incrementing counter to compare to NODE() number
+            var nodeNumber = 0;      // number extracted from NODE()
+            var DialogEnded = false;
+            var NodeDetected = false;
+            var _lineNumber = 0;
+
+            var SayTriggered = false;
+            var SayDetectLine = 0;
+            var _triggerLine = 0;
 
             foreach (var line in MainWindowDataContext.LuaFileInfo)
-                {
-// ----- NODE CHECK -----
+            {
+                _lineNumber++;
+
+                // Check if line is ENDDIALOG - set nodeNumber to equal nodeCounter
+                var regexEndDialog = new Regex(@"\s*ENDDIALOG");
+                var endDialogMatch = regexEndDialog.Match(line.body);
 
                 // Check if line has the phrase NODE(x) in it - where x is a number
-                Regex regexNode = new Regex(@"\s*NODE\((\d+)\)");
-                Match match = regexNode.Match(line.body);
+                var regexNode = new Regex(@"\s*NODE\((\d+)\)");
+                var nodeMatch = regexNode.Match(line.body);
 
-                if(match.Success)
+                if (endDialogMatch.Success) // Line has ENDDIALOG
                 {
+                    DialogEnded = true;
+                }
+
+                else if (nodeMatch.Success) // Line has NODE() in it
+                {
+                    NodeDetected = true;
+
                     // strip out NODE(), leaving only the number
                     bool nodesMatch = false;
-                    string value = match.Groups[1].Value;
-                    
+                    string value = nodeMatch.Groups[1].Value;
+
                     nodeNumber = Convert.ToInt32(value);
 
-                    //compare NODE number to incrementing counter to check if they are the same.
-                    if (nodeCounter == nodeNumber)
+                    //check that NODE() is higher than zero to avoid ENDDIALOG errors at start of script
+                    if (nodeNumber > 0)
                     {
-                        nodesMatch = true;
-                    }
-//TODO Add function to check for ENDDIALOG(), KILL(), ATTACK() and round up node numbers to nearest 10.
-
-                    if (!nodesMatch)
-                    {
-                        MainWindowDataContext.ErrorList.Add(new LuaFileErrors
+                        if (DialogEnded)
                         {
-                            ContentError = "Potential NODE numbering error at line " + line.body
-                        });
-                    }
+                            nodeCounter = nodeNumber;
+                        }
 
-                    nodeCounter++;
+                        //compare NODE number to incrementing counter to check if they are the same.
+                        if (nodeNumber == nodeCounter)
+                        {
+                            nodesMatch = true;
+                        }
+
+                        if (!nodesMatch)
+                        {
+                            MainWindowDataContext.ErrorList.Add(new LuaFileErrors
+                            {
+                                ErrorLine = _lineNumber,
+                                ContentError = "NODE(" + nodeNumber + ")" + " should be NODE(" + nodeCounter + ")"
+                            });
+                        }
+                        DialogEnded = false;
+                    }
+                    else
+                    {
+                        nodeNumber = nodeCounter;
+                    }
                 }
+
+                if (NodeDetected)
+                {
+                    nodeCounter++;
+
+                    NodeDetected = false;
+                }
+
 
 // ----- SAY CHECK -----
 
-                // Check if line has the phrase SAY in it
-                Regex regexSay = new Regex(@"\s*(SAY)+");
-                Match matchSay = regexSay.Match(line.body);
 
-                    if (matchSay.Success)
-                    {
-                        var sayLine = Regex.Replace(matchSay.ToString(), @"\s*", "");
-                        MessageBox.Show(sayLine + " detected in NODE("+ nodeCounter +")");
+                // Check if line has SAY, ANSWER, KILL, ATTACK in it
+                var SayDetected = new Regex(@"\s*(SAY\()+").Match(line.body).Success;
+                var AnswerDetected = new Regex(@"\s*(ANSWER\()+").Match(line.body).Success;
+                var AttackDetected = new Regex(@"\s*(ATTACK\(\))+").Match(line.body).Success;
+                var KillDetected = new Regex(@"\s*(KILL\(\))+").Match(line.body).Success;
+                var EndDialogDetected = new Regex(@"\s*(ENDDIALOG\(\))+").Match(line.body).Success;
+                var DialogStateDetected = new Regex(@"\s*(SETNEXTDIALOGSTATE\(\))+").Match(line.body).Success;
+
+                SayDetectLine++;
+
+                if (nodeNumber > 0)
+                {
+                    if (SayTriggered && SayDetected)
+                    {  
+                        MainWindowDataContext.ErrorList.Add(new LuaFileErrors
+                        {
+                            ErrorLine = (_triggerLine + 1),
+                            ContentError = "SAY not terminated correctly."
+                        });
                     }
+
+                    if (SayDetected)
+                    {
+                        SayTriggered = true;
+                        _triggerLine = SayDetectLine;
+                    }
+
+                    if (AnswerDetected | AttackDetected | KillDetected | EndDialogDetected | DialogStateDetected)
+                    {
+                        SayTriggered = false;
+                    }
+                }        
             }
 
 // ----- DISPLAY ALL CLEAR MESSAGE IF NO ERRORS IDENTIFIED -----
@@ -171,16 +242,14 @@ namespace LUA_Linter
         {
             ObservableCollection<luaFileContents> itemsToRemove = new ObservableCollection<luaFileContents>();
 
-            foreach (luaFileContents item in lb_display.Items)
+            foreach (luaFileContents item in lv_display.Items)
             {
-                //Console.WriteLine("Removing" + item.body + "from display list...");
                 itemsToRemove.Add(item);
             }
 
             foreach (luaFileContents item in itemsToRemove)
             {
-                //Console.WriteLine("Removed " + item.body + "from display list...");
-                ((ObservableCollection<luaFileContents>)lb_display.ItemsSource).Remove(item);
+                ((ObservableCollection<luaFileContents>)lv_display.ItemsSource).Remove(item);
             }
         }
 
@@ -191,15 +260,48 @@ namespace LUA_Linter
 
             foreach (LuaFileErrors item in lb_errorDisplay.Items)
             {
-                //Console.WriteLine("Removing" + item.ContentError + "from error list...");
                 errorsToRemove.Add(item);
             }
 
             foreach (LuaFileErrors item in errorsToRemove)
             {
-                //Console.WriteLine("Removed " + item.ContentError + "from error list...");
                 ((ObservableCollection<LuaFileErrors>)lb_errorDisplay.ItemsSource).Remove(item);
             }
+        }
+
+        private void SaveFile(object sender, RoutedEventArgs e)
+        {
+            var SaveFileLocation = new SaveFileDialog
+            {
+                Filter = "Lua files (*.lua)|*.lua"
+            };
+
+            SaveFileLocation.ShowDialog();
+
+            if (SaveFileLocation.FileName != "")
+            {
+                var SaveWriter = new StreamWriter(SaveFileLocation.FileName);
+
+                foreach (var item in MainWindowDataContext.LuaFileInfo)
+                {
+                    SaveWriter.Write(item.body + "\r");
+                }
+                
+                SaveWriter.Close();
+
+                MessageBox.Show("File saved.");
+            }
+        }
+
+        // TODO Implement a system so you can click an error and it will display the offending line in the Display dataview
+        private void Errorbox_click(object sender, MouseEventArgs e)
+        {
+            var control = (TextBox)sender;
+            var errorInfo = (LuaFileErrors)control.DataContext;
+            var selectedItem = errorInfo.ErrorLine;
+
+            lv_display.SelectedIndex = (selectedItem-1);
+            lv_display.ScrollIntoView(lv_display.SelectedItem);
         }
     }
 }

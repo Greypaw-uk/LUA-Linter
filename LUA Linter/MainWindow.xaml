@@ -24,52 +24,71 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                
+
                 <Grid.RowDefinitions>
                     <RowDefinition Height="30"/>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="10"/>                        
+                    <RowDefinition Height="10"/>
                 </Grid.RowDefinitions>
-                
+
                 <Grid Row="0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top">
-                        <Button Content="Load File" Height="30" Width="52" Click="LoadFile"/>
-                        <ListBox Name="lb_fileName" Width="auto" ItemsSource="{Binding LuaFileInfo}" IsSynchronizedWithCurrentItem="True" Padding="0">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBox Text="{Binding fileName}" Padding="0" BorderThickness="0"/>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        <Button Content="Scan" Height="30" Width="52" Click="ScanFile"/>
+                        <Button Content="Load File" Click="LoadFile"/>
+                        <TextBox Name ="tb_path" Width="Auto" Margin="10,0,0,0"/>
+                        <Button Content="Rescan" Click="ScanFile" Margin ="10,0,0,0" HorizontalAlignment="Right"/>
+                        <Button Content="Save File" Click="SaveFile" Margin ="10,0,0,0" HorizontalAlignment="Right"/>
                     </StackPanel>
                 </Grid>
 
                 <Grid Row="2">
-                    <ListBox Name="lb_display"  ItemsSource="{Binding LuaFileInfo}" IsSynchronizedWithCurrentItem="True" Padding="0">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding body}" Padding="0" BorderThickness="0"/>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <ListView Name="lv_display" ItemsSource="{Binding Path=LuaFileInfo}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Line #" Width="40">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding LineNumber}" TextAlignment="Left" Width="50"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Text" Width="Auto">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding body}" TextAlignment="Left" Width="Auto" Padding="0" BorderThickness="0"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
                 </Grid>
-                
+
                 <Grid Row ="4">
-                    <ListBox Name="lb_errorDisplay"  ItemsSource="{Binding ErrorList}" IsSynchronizedWithCurrentItem="True" Padding="0" >
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding ContentError}" Padding="0" BorderThickness="0" IsReadOnly="True"/>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <ListView Name="lb_errorDisplay" ItemsSource="{Binding Path=ErrorList}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Line #" Width="40">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding ErrorLine}" TextAlignment="Left" Width="50"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Error" Width="Auto" >
+                                    <GridViewColumn.CellTemplate >
+                                        <DataTemplate >
+                                            <TextBox Text="{Binding ContentError}" TextAlignment="Left" Width="Auto" Padding="0" BorderThickness="0" IsReadOnly="True" PreviewMouseDoubleClick="Errorbox_click"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
                 </Grid>
             </Grid>
-
         </Grid>
-
     </Grid>
 </Window>
