@@ -18,6 +18,14 @@ namespace LUA_Linter
         public FileInfo LuaFile;
         private string _line;
 
+
+        public void variables()
+        {
+            var lineNumber = 0;
+            var nodeNumber = 0;
+        }
+
+
         OpenFileDialog openFile = new OpenFileDialog
         {
             Filter = "Lua files (*.lua)|*.lua"
@@ -38,14 +46,15 @@ namespace LUA_Linter
             //if valid file is selected, open file, repeatedly add lines to observable collection  until the end of Lua file
             if (result == true)
             {
-                ClearDisplayList();
-                ClearErrorList();
+                clearDisplayList();
+                clearErrorList();
+
                 lineNumber = 0;
 
                 tb_path.Text = openFile.FileName;
 
                 StreamReader fileContents = new StreamReader(openFile.FileName);
-                
+
                 while ((_line = fileContents.ReadLine()) != null)
                 {
                     lineNumber++;
@@ -57,9 +66,9 @@ namespace LUA_Linter
                         body = _line
                     });
                 }
-
                 fileContents.Close();
-                CheckForErrors();
+
+                checkForErrors();
             }
             else
             {
@@ -68,14 +77,31 @@ namespace LUA_Linter
         }
 
 
-        private void CheckForErrors()
+        private void checkForErrors()
         {
-            var lineNumber = 0;
+            checkSyntaxSpelling();
+            checkNodeNumbers();
+            checkLineEnding();
 
-            // ----- CHECK DICTIONARY FOR SPELLING MISTAKES -----
+            if (MainWindowDataContext.ErrorList.Count == 0)
+            {
+                MessageBox.Show("File does not contain any currently defined errors.");
+            }
+        }
 
-            // TODO Check missionflags
-            // TODO Check that ANSWER nodes point to next NODE() number
+
+        // 	#################################################################
+        // 	#																#
+        // 	#	CHECK DICTIONARY FOR SPELLING MISTAKES IN SYNTAX			#
+        // 	#																#
+        // 	#	TODO Check missionflags//									#
+        // 	#	TODO Check that ANSWER nodes point to next NODE() number	#
+        // 	#																#
+        //	#################################################################	
+
+        private void checkSyntaxSpelling()
+        {
+            var value ="";
 
             Dictionary<string, string> commonMistakes = new Dictionary<string, string>
             {
@@ -90,13 +116,18 @@ namespace LUA_Linter
                 {"ENDDIALOGUE(", "ENDDIALOG(" },
                 {"Enddialog(", "ENDDIALOG(" },
                 {"Kill(", "KILL(" },
-                {"Attack(", "ATTACK(" }
+                {"Attack(", "ATTACK(" },
+                {"PLAYER_NAME ", "PLAYER_NAME() " },
+                {"PLAYER_NAME,", "PLAYER_NAME()," },
+                {"PLAYER_NAME.", "PLAYER_NAME()." }
             };
+
+            lineNumber = 0;
 
             foreach (var line in MainWindowDataContext.LuaFileInfo)
             {
+                value = line.body;
                 lineNumber++;
-                var value = line.body;
 
                 // if in error dictionary, add to error list
                 foreach (var keyValuePair in commonMistakes)
@@ -114,18 +145,23 @@ namespace LUA_Linter
                     }
                 }
             }
+        }
 
-// ----- CHECK NODE ORDER & CONVERSATION TERMINATION -----
 
-            var nodeCounter = 1;    // incrementing counter to compare to NODE() number
-            var nodeNumber = 0;      // number extracted from NODE()
+        // 	#################################################################
+        // 	#																#
+        // 	#	CHECKS WHETHER NODENUMBERS APPEAR TO BE CORRECT				#
+        // 	#																#
+        //	#################################################################	
+
+        private void checkNodeNumbers()
+        {
+            var _nodeNumber = 0;
+            var nodeCounter = 1;        // incrementing counter to compare to NODE() number
             var DialogEnded = false;
             var NodeDetected = false;
-            lineNumber = 0;
 
-            var SayTriggered = false;
-            var SayDetectLine = 0;
-            var _triggerLine = 0;
+            lineNumber = 0;
 
             foreach (var line in MainWindowDataContext.LuaFileInfo)
             {
@@ -152,18 +188,18 @@ namespace LUA_Linter
                     bool nodesMatch = false;
                     string value = nodeMatch.Groups[1].Value;
 
-                    nodeNumber = Convert.ToInt32(value);
+                    _nodeNumber = Convert.ToInt32(value);
 
                     //check that NODE() is higher than zero to avoid ENDDIALOG errors at start of script
-                    if (nodeNumber > 0)
+                    if (_nodeNumber > 0)
                     {
                         if (DialogEnded)
                         {
-                            nodeCounter = nodeNumber;
+                            nodeCounter = _nodeNumber;
                         }
 
                         //compare NODE number to incrementing counter to check if they are the same.
-                        if (nodeNumber == nodeCounter)
+                        if (_nodeNumber == nodeCounter)
                         {
                             nodesMatch = true;
                         }
@@ -173,14 +209,14 @@ namespace LUA_Linter
                             MainWindowDataContext.ErrorList.Add(new LuaFileErrors
                             {
                                 ErrorLine = lineNumber,
-                                ContentError = "NODE(" + nodeNumber + ")" + " should be NODE(" + nodeCounter + ")"
+                                ContentError = "NODE(" + _nodeNumber + ")" + " should be NODE(" + nodeCounter + ")"
                             });
                         }
                         DialogEnded = false;
                     }
                     else
                     {
-                        nodeNumber = nodeCounter;
+                        _nodeNumber = nodeCounter;
                     }
                 }
 
@@ -190,25 +226,40 @@ namespace LUA_Linter
 
                     NodeDetected = false;
                 }
+            }
+        }
 
 
-// ----- SAY CHECK -----
+        // 	#################################################################
+        // 	#																#
+        // 	#	CHECKS LINES WITH SAY ARE FOLLOWED BY AN ANSWER, ATTACK,	#
+        //	#	KILL, ENDDIALOG, SETNEXTDIALOGESTATE, OR REMOVE COMMAND		#
+        // 	#																#
+        //	#################################################################	
 
+        private void checkLineEnding()
+        {
+            var _nodeNumber = 0;
+            var SayTriggered = false;
+            var _triggerLine = 0;
+            var SayDetectLine = 0;
 
-                // Check if line has SAY, ANSWER, KILL, ATTACK in it
+            foreach (var line in MainWindowDataContext.LuaFileInfo)
+            {
                 var SayDetected = new Regex(@"\s*(SAY\()+").Match(line.body).Success;
                 var AnswerDetected = new Regex(@"\s*(ANSWER\()+").Match(line.body).Success;
                 var AttackDetected = new Regex(@"\s*(ATTACK\(\))+").Match(line.body).Success;
                 var KillDetected = new Regex(@"\s*(KILL\(\))+").Match(line.body).Success;
                 var EndDialogDetected = new Regex(@"\s*(ENDDIALOG\(\))+").Match(line.body).Success;
                 var DialogStateDetected = new Regex(@"\s*(SETNEXTDIALOGSTATE\(\))+").Match(line.body).Success;
+                var RemoveDetected = new Regex(@"\s*(REMOVE\(\))+").Match(line.body).Success;
 
                 SayDetectLine++;
 
-                if (nodeNumber > 0)
+                if (_nodeNumber > 0)
                 {
                     if (SayTriggered && SayDetected)
-                    {  
+                    {
                         MainWindowDataContext.ErrorList.Add(new LuaFileErrors
                         {
                             ErrorLine = (_triggerLine + 1),
@@ -222,30 +273,31 @@ namespace LUA_Linter
                         _triggerLine = SayDetectLine;
                     }
 
-                    if (AnswerDetected | AttackDetected | KillDetected | EndDialogDetected | DialogStateDetected)
+                    if (AnswerDetected | AttackDetected | KillDetected | EndDialogDetected | DialogStateDetected | RemoveDetected)
                     {
                         SayTriggered = false;
                     }
-                }        
+                }
             }
-
-// ----- DISPLAY ALL CLEAR MESSAGE IF NO ERRORS IDENTIFIED -----
-
-            if (MainWindowDataContext.ErrorList.Count == 0)
-            {
-                MessageBox.Show("File does not contain any currently defined errors.");
-            }
+                
         }
 
+
+        // 	#################################################################
+        // 	#																#
+        // 	#	RECHECKS ALTERATIONS MADE WITHIN LINTER WITHOUT NEED TO   	#
+        //	#	SAVE AND RELOAD THE FILE                                	#
+        // 	#																#
+        //	#################################################################
 
         private void ScanFile(object sender, RoutedEventArgs e)
         {
-            ClearErrorList();
-            CheckForErrors();
+            clearErrorList();
+            checkForErrors();
         }
 
 
-        private void ClearDisplayList()
+        private void clearDisplayList()
         {
             ObservableCollection<luaFileContents> itemsToRemove = new ObservableCollection<luaFileContents>();
 
@@ -261,7 +313,7 @@ namespace LUA_Linter
         }
 
 
-        private void ClearErrorList()
+        private void clearErrorList()
         {
             ObservableCollection<LuaFileErrors> errorsToRemove = new ObservableCollection<LuaFileErrors>();
 
@@ -275,6 +327,13 @@ namespace LUA_Linter
                 ((ObservableCollection<LuaFileErrors>)lb_errorDisplay.ItemsSource).Remove(item);
             }
         }
+
+
+        // 	#################################################################
+        // 	#																#
+        // 	#	DELETES CURRENT SAVEFILE AND CREATES A NEW SAVE FILE    	#
+        // 	#																#
+        //	#################################################################
 
         private void SaveFile(object sender, RoutedEventArgs e)
         {
@@ -293,21 +352,28 @@ namespace LUA_Linter
                 {
                     SaveWriter.Write(item.body + "\r");
                 }
-                
+
                 SaveWriter.Close();
 
                 MessageBox.Show("File saved.");
             }
         }
 
-        // Scrolls to the line in Display when double clicking an error.
+
+        // 	#################################################################
+        // 	#																#
+        // 	#	SCROLLS TO THE LINE IN DISPLAY BOX WHEN DOUBLECLICKING  	#
+        //	#	AN ENTRY IN THE ERROR BOX                           		#
+        // 	#																#
+        //	#################################################################
+
         private void Errorbox_click(object sender, MouseEventArgs e)
         {
             var control = (TextBox)sender;
             var errorInfo = (LuaFileErrors)control.DataContext;
             var selectedItem = errorInfo.ErrorLine;
 
-            lv_display.SelectedIndex = (selectedItem-1);
+            lv_display.SelectedIndex = (selectedItem - 1);
             lv_display.ScrollIntoView(lv_display.SelectedItem);
         }
     }
