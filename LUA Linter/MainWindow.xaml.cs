@@ -15,16 +15,9 @@ namespace LUA_Linter
         MainWindowDataContext context = new MainWindowDataContext();
 
         private int lineNumber;
+        private int nodeNumber = 0;
         public FileInfo LuaFile;
         private string _line;
-
-
-        public void variables()
-        {
-            var lineNumber = 0;
-            var nodeNumber = 0;
-        }
-
 
         OpenFileDialog openFile = new OpenFileDialog
         {
