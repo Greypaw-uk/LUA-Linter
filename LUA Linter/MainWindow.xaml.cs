@@ -34,13 +34,13 @@ namespace LUA_Linter
 
         private void LoadFile(object sender, RoutedEventArgs e)
         {
-            Nullable<bool> result = openFile.ShowDialog();
+            bool? result = openFile.ShowDialog();
 
             //if valid file is selected, open file, repeatedly add lines to observable collection  until the end of Lua file
             if (result == true)
             {
-                clearDisplayList();
-                clearErrorList();
+                ClearDisplayList();
+                ClearErrorList();
 
                 lineNumber = 0;
 
@@ -61,7 +61,7 @@ namespace LUA_Linter
                 }
                 fileContents.Close();
 
-                checkForErrors();
+                CheckForErrors();
             }
             else
             {
@@ -70,11 +70,11 @@ namespace LUA_Linter
         }
 
 
-        private void checkForErrors()
+        private void CheckForErrors()
         {
-            checkSyntaxSpelling();
-            checkNodeNumbers();
-            checkLineEnding();
+            CheckSyntaxSpelling();
+            CheckNodeNumbers();
+            CheckLineEnding();
 
             if (MainWindowDataContext.ErrorList.Count == 0)
             {
@@ -87,12 +87,12 @@ namespace LUA_Linter
         // 	#																#
         // 	#	CHECK DICTIONARY FOR SPELLING MISTAKES IN SYNTAX			#
         // 	#																#
-        // 	#	TODO Check missionflags//									#
+        // 	#	TODO Check missionflags 									#
         // 	#	TODO Check that ANSWER nodes point to next NODE() number	#
         // 	#																#
         //	#################################################################	
 
-        private void checkSyntaxSpelling()
+        private void CheckSyntaxSpelling()
         {
             var value ="";
 
@@ -147,7 +147,7 @@ namespace LUA_Linter
         // 	#																#
         //	#################################################################	
 
-        private void checkNodeNumbers()
+        private void CheckNodeNumbers()
         {
             var _nodeNumber = 0;
             var nodeCounter = 1;        // incrementing counter to compare to NODE() number
@@ -225,12 +225,41 @@ namespace LUA_Linter
 
         // 	#################################################################
         // 	#																#
+        // 	#	CHECKS WHETHER DIALOGTRIGGERS APPEAR TO BE CORRECT			#
+        // 	#																#
+        //	#################################################################	
+
+        private void CheckTriggers()
+        {
+            var _triggerNumber = 0;
+            var triggerCounter = 1;        // incrementing counter to compare to NODE() number
+            var triggerDetected = false;
+
+            lineNumber = 0;
+
+            foreach (var line in MainWindowDataContext.LuaFileInfo)
+            {
+                lineNumber++;
+
+                // Check if line is ENDDIALOG - set nodeNumber to equal nodeCounter
+                var regexEndDialog = new Regex(@"\s*ENDDIALOG");
+                var endDialogMatch = regexEndDialog.Match(line.body);
+
+                // Check if line has the phrase NODE(x) in it - where x is a number
+                var regexNode = new Regex(@"\s*NODE\((\d+)\)");
+                var nodeMatch = regexNode.Match(line.body);
+            }
+        }
+
+
+        // 	#################################################################
+        // 	#																#
         // 	#	CHECKS LINES WITH SAY ARE FOLLOWED BY AN ANSWER, ATTACK,	#
         //	#	KILL, ENDDIALOG, SETNEXTDIALOGESTATE, OR REMOVE COMMAND		#
         // 	#																#
         //	#################################################################	
 
-        private void checkLineEnding()
+        private void CheckLineEnding()
         {
             var _nodeNumber = 0;
             var SayTriggered = false;
@@ -285,12 +314,12 @@ namespace LUA_Linter
 
         private void ScanFile(object sender, RoutedEventArgs e)
         {
-            clearErrorList();
-            checkForErrors();
+            ClearErrorList();
+            CheckForErrors();
         }
 
 
-        private void clearDisplayList()
+        private void ClearDisplayList()
         {
             ObservableCollection<luaFileContents> itemsToRemove = new ObservableCollection<luaFileContents>();
 
@@ -306,7 +335,7 @@ namespace LUA_Linter
         }
 
 
-        private void clearErrorList()
+        private void ClearErrorList()
         {
             ObservableCollection<LuaFileErrors> errorsToRemove = new ObservableCollection<LuaFileErrors>();
 
